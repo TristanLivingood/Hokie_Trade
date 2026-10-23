@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   StyleSheet, Text, View, SafeAreaView, TextInput,
   TouchableOpacity, ScrollView,
 } from 'react-native';
+import MeetupChat, { chatId } from './src/meetups/MeetupChat';
+import { conversationReducer, createConversation } from './src/meetups/model';
+import type { Conversation, ConversationAction, Participant } from './src/meetups/model';
 
 type Listing = {
   id: number;
@@ -21,7 +24,6 @@ const listings: Listing[] = [
 ];
 
 type Screen = 'login' | 'verify' | 'browse' | 'detail' | 'thread' | 'rating';
-type Message = { from: 'me' | 'them'; text: string };
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('login');
@@ -30,12 +32,23 @@ export default function App() {
   const [code, setCode] = useState('');
   const [query, setQuery] = useState('');
   const [activeListing, setActiveListing] = useState<Listing | null>(null);
-  const [messages, setMessages] = useState<Message[]>([
-    { from: 'them', text: 'Hey! Yes the item is still available.' },
-    { from: 'me', text: 'Great, does Friday afternoon work to meet up?' },
-  ]);
-  const [draft, setDraft] = useState('');
+  const [conversations, setConversations] = useState<Record<number, Conversation>>(() =>
+    Object.fromEntries(listings.map(listing => [listing.id, createConversation()]))
+  );
+  const replyTimers = useRef(new Set<ReturnType<typeof setTimeout>>());
   const [rating, setRating] = useState(0);
+
+  useEffect(() => {
+    const timers = replyTimers.current;
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
+  const updateConversation = (listingId: number, action: ConversationAction) => {
+    setConversations(previous => ({
+      ...previous,
+      [listingId]: conversationReducer(previous[listingId], action),
+    }));
+  };
 
   const filtered = listings.filter(l =>
     !query ||
@@ -48,13 +61,19 @@ export default function App() {
     setScreen('detail');
   };
 
-  const sendMessage = () => {
-    if (!draft.trim()) return;
-    setMessages(prev => [...prev, { from: 'me', text: draft }]);
-    setDraft('');
-    setTimeout(() => {
-      setMessages(prev => [...prev, { from: 'them', text: 'Sounds good, see you then!' }]);
+  const sendMessage = (listingId: number, from: Participant, text: string) => {
+    updateConversation(listingId, { type: 'message', id: chatId(), from, text });
+    if (from !== 'buyer') return;
+    // Capture the listing and sender now. Navigating to another chat or
+    // switching demo roles must never redirect this scripted reply.
+    const timer = setTimeout(() => {
+      updateConversation(listingId, {
+        type: 'message', id: chatId(), from: 'seller',
+        text: 'Thanks! Use a meetup proposal to confirm a place and time.',
+      });
+      replyTimers.current.delete(timer);
     }, 600);
+    replyTimers.current.add(timer);
   };
 
   const handleSendCode = () => {
@@ -84,7 +103,7 @@ export default function App() {
             value={email}
             onChangeText={(t) => { setEmail(t); if (emailError) setEmailError(''); }}
           />
-          <Text style={styles.hint}>Must end in @vt.edu — that's how we verify you're a Hokie.</Text>
+          <Text style={styles.hint}>Must end in @vt.edu — that’s how we verify you’re a Hokie.</Text>
           {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
 
           <TouchableOpacity style={styles.btn} onPress={handleSendCode}>
@@ -189,41 +208,19 @@ export default function App() {
 
   // ---------- MESSAGE THREAD ----------
   if (screen === 'thread' && activeListing) {
+    const listingId = activeListing.id;
     return (
       <SafeAreaView style={styles.browseContainer}>
-        <View style={styles.topbar}>
-          <TouchableOpacity onPress={() => setScreen('detail')}>
-            <Text style={styles.backArrow}>← {activeListing.seller}</Text>
-          </TouchableOpacity>
-        </View>
-        <ScrollView style={{ padding: 20, flex: 1 }}>
-          {messages.map((m, i) => (
-            <View
-              key={i}
-              style={[styles.bubble, m.from === 'me' ? styles.bubbleMe : styles.bubbleThem]}
-            >
-              <Text style={{ color: m.from === 'me' ? '#FBF6F1' : '#231512' }}>{m.text}</Text>
-            </View>
-          ))}
-          <View style={styles.safeSpot}>
-            <Text style={{ fontWeight: '700', fontSize: 13 }}>📍 Suggested safe meetup spot</Text>
-            <Text style={{ color: '#6A5750', fontSize: 13 }}>Newman Library, main entrance</Text>
-          </View>
-        </ScrollView>
-        <View style={styles.inputRow}>
-          <TextInput
-            style={styles.msgInput}
-            placeholder="Type a message…"
-            value={draft}
-            onChangeText={setDraft}
-          />
-          <TouchableOpacity style={styles.sendBtn} onPress={sendMessage}>
-            <Text style={{ color: '#fff', fontWeight: '700' }}>➤</Text>
-          </TouchableOpacity>
-        </View>
-        <TouchableOpacity style={[styles.btn, { margin: 20 }]} onPress={() => setScreen('rating')}>
-          <Text style={styles.btnText}>Trade complete — rate it</Text>
-        </TouchableOpacity>
+        <MeetupChat
+          key={listingId}
+          seller={activeListing.seller}
+          listingTitle={activeListing.title}
+          conversation={conversations[listingId]}
+          onAction={action => updateConversation(listingId, action)}
+          onSendMessage={(from, text) => sendMessage(listingId, from, text)}
+          onBack={() => setScreen('detail')}
+          onComplete={() => { setRating(0); setScreen('rating'); }}
+        />
       </SafeAreaView>
     );
   }
@@ -292,11 +289,4 @@ const styles = StyleSheet.create({
   detailDesc: { fontSize: 15, color: '#3A2A26', lineHeight: 22, marginBottom: 16 },
   sellerRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderWidth: 1, borderColor: '#E6D9CE', borderRadius: 14, padding: 14, marginBottom: 20 },
   avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#7A1B3A', alignItems: 'center', justifyContent: 'center' },
-  bubble: { maxWidth: '78%', padding: 12, borderRadius: 16, marginBottom: 10 },
-  bubbleThem: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#E6D9CE', alignSelf: 'flex-start' },
-  bubbleMe: { backgroundColor: '#7A1B3A', alignSelf: 'flex-end' },
-  safeSpot: { backgroundColor: '#F2ECE4', borderWidth: 1, borderColor: '#E6D9CE', borderRadius: 14, padding: 14, marginTop: 10 },
-  inputRow: { flexDirection: 'row', padding: 16, gap: 10, borderTopWidth: 1, borderTopColor: '#E6D9CE' },
-  msgInput: { flex: 1, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E6D9CE', borderRadius: 24, paddingHorizontal: 16, paddingVertical: 10 },
-  sendBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#7A1B3A', alignItems: 'center', justifyContent: 'center' },
 });
