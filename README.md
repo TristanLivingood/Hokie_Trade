@@ -2,7 +2,7 @@
 
 A marketplace made only for verified Virginia Tech students to buy, sell, and trade textbooks, course supplies, dorm gear, and peer services (like tutoring). Listings can be searched by course number, and the app has in-app messaging, ratings, and suggested safe on-campus meetup spots.
 
-**Course:** CS 3704, Project 2 (Fall 2026) | **Team:** [Team Name Not Determined]
+**Course:** CS 3704, Project 2 (Fall 2026) | **Team:** Trade
 
 ## Team
 
@@ -48,7 +48,7 @@ Our design documents describe the full system we plan to build (Next.js, TypeScr
 ### Steps
 
 ```bash
-git clone https://github.com/nati2405/Hokie_Trade
+git clone https://github.com/TristanLivingood/Hokie_Trade
 cd Hokie_Trade
 npm install
 npx expo start
