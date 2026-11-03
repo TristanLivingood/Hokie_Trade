@@ -1,0 +1,66 @@
+name: Quality checks
+
+# Check all pull requests, regardless of their target branch.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      # A failed check must not cancel the other checks.
+      fail-fast: false
+      matrix:
+        include:
+          - name: Unit tests
+            command: npm test
+          - name: ESLint
+            command: npm run lint
+          - name: TypeScript
+            command: npm run typecheck
+    env:
+      CI: 'true'
+      EXPO_NO_TELEMETRY: '1'
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install dependencies from lockfile
+        run: npm ci
+
+      - name: Run ${{ matrix.name }}
+        id: check
+        run: ${{ matrix.command }}
+
+      # Still publish the outcome when a check or dependency installation fails.
+      - name: Report result
+        if: ${{ always() }}
+        env:
+          CHECK_NAME: ${{ matrix.name }}
+          CHECK_OUTCOME: ${{ steps.check.outcome }}
+          JOB_STATUS: ${{ job.status }}
+        shell: bash
+        run: |
+          case "$CHECK_OUTCOME" in
+            success) result='PASS' ;;
+            failure) result='FAIL' ;;
+            *) result="NOT COMPLETED (job: $JOB_STATUS)" ;;
+          esac
+          printf '### %s\n\n**Result: %s**\n\nSee the job logs for details.\n' \
+            "$CHECK_NAME" "$result" >> "$GITHUB_STEP_SUMMARY"
