@@ -23,8 +23,8 @@ VT students trade things with each other all the time, but they use general apps
 - Search listings by course number (for example, "CS 3704")
 - View a listing and its verified seller
 - Message the seller inside the app
-- Propose a campus meetup location, date, and time inside chat
-- Accept or suggest changes to a meetup, with the confirmed plan pinned above the messages
+- Propose a campus meetup location, date, and time from the conversation's **Meeting** tab
+- Review, accept, or suggest changes to a meetup in the Meeting tab, with a read-only record in Chat
 - Rate the trade afterward
 
 ## Project Status
@@ -67,14 +67,15 @@ npx expo start
 
 ### Try meetup scheduling
 
-1. Open any listing and tap **Contact Seller**.
-2. In the **Buyer** demo view, tap **+ Propose meetup**.
+1. Open any listing and tap **Contact Seller**. The conversation opens on the **Chat** tab.
+2. Switch to the **Meeting** tab and tap **Propose meetup**. While no plan exists the Meeting tab shows "No meetup planned yet".
 3. Choose Newman Library, Squires Student Center, or the Drillfield. Choose a future date and enter a 24-hour time, such as `15:30` for 3:30 PM. All meetup times use **Eastern time in Blacksburg**, even if the phone is in another time zone.
-4. Tap **Send proposal**. A structured meetup card appears in the conversation.
-5. Switch to **Seller** in the demo bar. Tap **Accept meetup**, or tap **Suggest change**, change the location/date/time, and send a new proposal. Switch back to **Buyer** to accept the seller's counterproposal.
-6. After acceptance, the agreed details stay pinned above the scrolling messages. Use **Change** to propose a new plan; the previous agreement stays pinned until the other participant accepts the change.
-7. The proposer can edit or withdraw a pending proposal. Replaced, withdrawn, and accepted cards cannot be accepted again. Past times and invalid dates are rejected.
-8. Open another listing to see a separate conversation, then return to the first listing to see its saved session state.
+4. Tap **Send proposal**. The Meeting tab shows the pending proposal and Chat shows a structured, read-only meetup card with **View in Meeting**.
+5. Switch to **Seller** in the demo bar. The Meeting tab shows an **action needed** badge on the tab; open it and tap **Accept meetup**, or tap **Suggest change**, change the location/date/time, and send a new proposal. Switch back to **Buyer** to accept the seller's counterproposal.
+6. After acceptance, the confirmed details sit at the top of the Meeting tab. Use **Change meetup** to propose a new plan; the current agreement stays in effect and is labelled "Confirmed" until the other participant accepts the change.
+7. The proposer can edit or withdraw a pending proposal; while one is pending the primary action is disabled and explains why. Replaced, withdrawn, and accepted cards cannot be accepted again. Past times and invalid dates are rejected, and a confirmed plan whose time has passed keeps its details with a "time has passed" notice.
+8. Type a message in Chat, switch to Meeting, then switch back: your unsent draft is still there.
+9. Open another listing to see a separate conversation, then return to the first listing to see its saved meetup state (the conversation reopens on Chat).
 
 Meetup locations are suggestions, not an official safety endorsement. Meet in a public area during open hours.
 
@@ -88,17 +89,24 @@ Meetup locations are suggestions, not an official safety endorsement. Meet in a 
 ## Repository Layout
 
 ```
-App.tsx                     Main screens, mock listings, per-listing conversations
-src/meetups/MeetupChat.tsx   Chat, structured proposals, demo roles, confirmed pin
-src/meetups/MeetupForm.tsx   Campus location/date/time form
-src/meetups/model.ts        Conversation transitions and Eastern-time validation
-tests/meetups.test.cjs      Meetup behavior and date-validation tests
-scripts/test-meetups.cjs    Test runner using the project's TypeScript compiler
-index.ts                   Expo entry point
-app.json                   Expo configuration
-assets/                    App icons and images
-PRODUCT.md                 Product requirements
-SYSTEM.md                  Planned full-system design
+App.tsx                          Main screens, mock listings, per-listing conversations
+src/meetups/MeetupChat.tsx        Conversation screen: header, demo roles, tabs, shared state
+src/meetups/ConversationTabs.tsx  "Chat" | "Meeting" tabs with the action-needed badge
+src/meetups/ChatPanel.tsx         Message timeline, read-only meetup cards, composer
+src/meetups/MeetingPanel.tsx      Confirmed plan, pending proposal, empty state, actions
+src/meetups/MeetupCard.tsx        Read-only meetup record shown in Chat
+src/meetups/MeetupForm.tsx        Campus location/date/time form
+src/meetups/model.ts              Conversation transitions and Eastern-time validation
+src/meetups/meetingView.ts        Derived meeting view: available actions, status text, form defaults
+src/meetups/viewState.ts          Presentation state: active tab and per-participant drafts
+tests/meetups.test.cjs            Meetup behavior and date-validation tests
+tests/meeting-tab.test.cjs        Meeting tab requirements tests (US-001 - US-004)
+scripts/test-meetups.cjs          Test runner using the project's TypeScript compiler
+index.ts                          Expo entry point
+app.json                          Expo configuration
+assets/                           App icons and images
+PRODUCT.md                        Product requirements
+SYSTEM.md                         Planned full-system design
 ```
 
 ## Development checks
@@ -109,7 +117,7 @@ npm run lint
 npm test
 ```
 
-The tests cover acceptance permissions, counterproposals, confirmed-plan preservation, withdrawal, stale actions, separate conversations, invalid dates, past times, and daylight-saving transitions. Run the meetup flow on an iPhone or Android device to check keyboard behavior and native layout.
+The tests cover acceptance permissions, counterproposals, confirmed-plan preservation, withdrawal, stale actions, separate conversations, invalid dates, past times, and daylight-saving transitions. They also cover the Meeting tab's derived view: tab defaults, empty/pending/confirmed states, form defaults and prefill, disabled actions, the action-needed badge, and draft preservation across tab switches. Run the meetup flow on an iPhone or Android device to check keyboard behavior, native layout, and the screen-reader pass.
 
 ## AI Use
 

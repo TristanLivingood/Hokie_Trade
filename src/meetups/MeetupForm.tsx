@@ -4,6 +4,7 @@ import {
   StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { CAMPUS_LOCATIONS, campusDate, validateMeetup } from './model';
+import { meetupFormDefaults } from './meetingView';
 import type { MeetupDetails } from './model';
 
 type Props = {
@@ -16,9 +17,10 @@ type Props = {
 /** Mounted only while open, so a cancelled draft never overwrites a proposal. */
 export default function MeetupForm({ initial, isChange, onClose, onSubmit }: Props) {
   const [openedAt] = useState(() => Date.now());
-  const [locationId, setLocationId] = useState(initial?.locationId ?? 'newman');
-  const [date, setDate] = useState(initial?.date ?? campusDate(openedAt, 1));
-  const [time, setTime] = useState(initial?.time ?? '15:00');
+  const [defaults] = useState(() => meetupFormDefaults(openedAt));
+  const [locationId, setLocationId] = useState(initial?.locationId ?? defaults.locationId);
+  const [date, setDate] = useState(initial?.date ?? defaults.date);
+  const [time, setTime] = useState(initial?.time ?? defaults.time);
   const [error, setError] = useState('');
 
   const submit = () => {

@@ -176,7 +176,7 @@ export function conversationReducer(state: Conversation, action: ConversationAct
     ...state, proposals, pendingId: null, confirmedId: proposal.id,
     messages: [...state.messages, {
       id: `${proposal.id}-accepted`, type: 'event',
-      text: `${action.actor === 'buyer' ? 'Buyer' : 'Seller'} accepted. Meetup details are pinned above.`,
+      text: `${action.actor === 'buyer' ? 'Buyer' : 'Seller'} accepted. The meetup is confirmed in the Meeting tab.`,
     }],
   };
 }
